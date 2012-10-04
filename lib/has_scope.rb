@@ -100,11 +100,12 @@ module HasScope
   #     end
   #   end
   #
-  def apply_scopes(target, hash=params)
+  def apply_scopes(target, exclude_scopes = [], hash=params)
     return target unless scopes_configuration
 
     self.scopes_configuration.each do |scope, options|
       next unless apply_scope_to_action?(options)
+      next if exclude_scopes.include?(scope)
       key = options[:as]
 
       if hash.key?(key)

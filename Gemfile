@@ -12,3 +12,7 @@ else
 end
 
 gem "mocha"
+
+group :development do
+  gem 'pry'
+end

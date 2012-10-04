@@ -6,12 +6,13 @@ end
 class TreesController < ApplicationController
   has_scope :color, :unless => :show_all_colors?
   has_scope :only_tall, :type => :boolean, :only => :index, :if => :restrict_to_only_tall_trees?
-  has_scope :shadown_range, :default => 10, :except => [ :index, :show, :new ]
+  has_scope :shadown_range, :default => 10, :except => [ :index, :show, :new, :only ]
   has_scope :root_type, :as => :root, :allow_blank => true
   has_scope :calculate_height, :default => proc {|c| c.session[:height] || 20 }, :only => :new
   has_scope :paginate, :type => :hash
   has_scope :args_paginate, :type => :hash, :using => [:page, :per_page]
   has_scope :categories, :type => :array
+  has_scope :top_first, :type => :boolean
 
   has_scope :only_short, :type => :boolean do |controller, scope|
     scope.only_really_short!(controller.object_id)
@@ -32,6 +33,11 @@ class TreesController < ApplicationController
   def show
     @tree = apply_scopes(Tree).find(params[:id])
   end
+
+  def only
+    @trees = apply_scopes(Tree, exclude_scopes = [:color, :top_first] ).all
+  end
+
   alias :edit :show
 
   protected
@@ -59,6 +65,19 @@ end
 
 class HasScopeTest < ActionController::TestCase
   tests TreesController
+
+  def test_restricted_scope_application
+    array = %w(book kitchen sport)
+    Tree.expects(:categories).with(array).returns(Tree)
+    Tree.expects(:color).never
+    Tree.expects(:top_first).never
+
+    Tree.expects(:all).returns([mock_tree])
+    
+    get :only, :categories => array, :color => 'green', :top_first => 'true'
+    assert_equal([mock_tree], assigns(:trees))
+    assert_equal({ :categories => array }, current_scopes)
+  end
 
   def test_boolean_scope_is_called_when_boolean_param_is_true
     Tree.expects(:only_tall).with().returns(Tree).in_sequence
@@ -248,7 +267,7 @@ class TreeHugger
   has_scope :color
 
   def by_color
-    apply_scopes(Tree, :color => 'blue')
+    apply_scopes(Tree, exclude_scopes = [],  hash = { :color => 'blue' })
   end
 
 end
